@@ -1,4 +1,3 @@
-# network-anomaly-detection-spark
 # Distributed System for Near Real-Time Network Anomaly Detection with Spark MLlib on AWS EMR
 
 Distributed pipeline for detecting network traffic anomalies (DoS/DDoS, PortScan, Botnet) using Apache Spark, Spark MLlib, and AWS EMR, with a near real-time demonstration via Spark Structured Streaming on unseen data.
@@ -73,26 +72,26 @@ Region: `us-east-1`, co-located with the public CSE-CIC-IDS2018 bucket to avoid 
 ## Repository structure
 
 ```
-├── gestion_datos_1.py              # Fase 1 — ingesta, limpieza y preprocesamiento de CIC-IDS2017
-├── gestion_datos_cic_ids2018.py    # Fase 2 — homologación de CIC-IDS2018 para la demo de streaming
-├── pipeline_random_forest.py       # Fase 1 — entrenamiento, evaluación y optimización de Random Forest
-├── pipeline_kmeans.py              # Fase 1 — entrenamiento, calibración, evaluación y optimización de KMeans
-├── tcp_sender.py                   # Fase 3 — productor TCP (corre en la EC2)
-├── streaming_demo_v2.py            # Fase 3 — consumidor Spark Structured Streaming (corre en el master EMR)
-├── monitor.py                      # Fase 4 — dashboard de métricas en terminal
-├── create_bucket.sh                # Preparación — crea el bucket S3 con toda su estructura
-├── guia_streaming.md               # Guía paso a paso del despliegue completo (3 terminales)
+├── gestion_datos_1.py              # Phase 1 — ingestion, cleaning, and preprocessing of CIC-IDS2017
+├── gestion_datos_cic_ids2018.py    # Phase 2 — harmonization of CIC-IDS2018 for the streaming demo
+├── pipeline_random_forest.py       # Phase 1 — Random Forest training, evaluation, and optimization
+├── pipeline_kmeans.py              # Phase 1 — KMeans training, calibration, evaluation, and optimization
+├── tcp_sender.py                   # Phase 3 — TCP producer (runs on the EC2 instance)
+├── streaming_demo_v2.py            # Phase 3 — Spark Structured Streaming consumer (runs on the EMR master)
+├── monitor.py                      # Phase 4 — terminal metrics dashboard
+├── create_bucket.sh                # Setup — creates the S3 bucket with its full structure
+├── guia_streaming.md               # Step-by-step guide for the full deployment (3 terminals)
 ├── docs/
-│   ├── Proyecto_BD.pdf             # Especificación técnica — Fase 1 (problema, objetivos, infraestructura)
-│   └── Proyecto_BD_Fase2.pdf       # Especificación técnica — Fase 2 (infraestructura detallada)
+│   ├── Proyecto_BD.pdf             # Technical specification — Phase 1 (problem, objectives, infrastructure)
+│   └── Proyecto_BD_Fase2.pdf       # Technical specification — Phase 2 (detailed infrastructure)
 └── README.md
 ```
 
 ## How to reproduce
 
-Ver [`guia_streaming.md`](./guia_streaming.md) para la guía completa (Security Groups, los tres terminales de la demo y troubleshooting). Resumen rápido:
+See [`guia_streaming.md`](./guia_streaming.md) for the complete guide (Security Groups, the three demo terminals, and troubleshooting). Quick summary:
 
-**1. Crear el bucket S3 y el clúster EMR**
+**1. Create the S3 bucket and the EMR cluster**
 ```bash
 bash create_bucket.sh proyecto-anomalias-emr us-east-1
 
@@ -111,33 +110,33 @@ aws emr create-cluster \
   --enable-debugging
 ```
 
-**2. Entrenar los modelos (Fase 1 — en el nodo master)**
+**2. Train the models (Phase 1 — on the master node)**
 ```bash
-spark-submit --master yarn gestion_datos_1.py           # preprocesamiento + preprocesadores compartidos
-spark-submit --master yarn pipeline_random_forest.py    # Random Forest: entrenar + evaluar + optimizar
-spark-submit --master yarn pipeline_kmeans.py            # KMeans: entrenar + calibrar + evaluar + optimizar
+spark-submit --master yarn gestion_datos_1.py           # preprocessing + shared preprocessors
+spark-submit --master yarn pipeline_random_forest.py    # Random Forest: train + evaluate + optimize
+spark-submit --master yarn pipeline_kmeans.py            # KMeans: train + calibrate + evaluate + optimize
 ```
 
-**3. Homologar el dataset de streaming (Fase 2 — una sola vez)**
+**3. Harmonize the streaming dataset (Phase 2 — one time only)**
 ```bash
 spark-submit --master yarn gestion_datos_cic_ids2018.py
 ```
 
-**4. Ejecutar la demo de streaming (Fase 3 — tres terminales simultáneas)**
+**4. Run the streaming demo (Phase 3 — three simultaneous terminals)**
 ```bash
-# Terminal 1 (EC2 productora)
+# Terminal 1 (producer EC2)
 python3 tcp_sender.py --rate 500
 
-# Terminal 2 (master EMR)
+# Terminal 2 (EMR master)
 spark-submit --master yarn streaming_demo_v2.py --producer-host <EC2-PRIVATE-IP> --producer-port 9999
 
-# Terminal 3 (local o EMR)
+# Terminal 3 (local or EMR)
 python3 monitor.py
 ```
 
 ## Results
 
-> _Completar con las métricas finales una vez evaluados ambos modelos: Accuracy/Precision/Recall/F1 (Random Forest), AUC-ROC/F1 binario/FPR (KMeans con umbral calibrado), comparación modelo base vs. optimizado, throughput y latencia end-to-end del pipeline de streaming, y comparación de escalabilidad horizontal (2 a 5 nodos)._
+> _To be completed with the final metrics once both models have been evaluated: Accuracy/Precision/Recall/F1 (Random Forest), AUC-ROC/binary F1/FPR (KMeans with calibrated threshold), base vs. optimized model comparison, end-to-end throughput and latency of the streaming pipeline, and horizontal scalability comparison (2 to 5 nodes)._
 
 ## References
 
@@ -150,4 +149,4 @@ python3 monitor.py
 - Samuel David Rojas Cárdenas — [samueldavidrojascardenas@gmail.com](mailto:samueldavidrojascardenas@gmail.com)
 - Sergio Andrés Guevara
 
-Universidad del Rosario — Escuela de Ciencias e Ingeniería, Matemáticas Aplicadas y Ciencias de la Computación. Proyecto de Big Data, 2026.:samueldavidrojascardenas@gmail.com)
+Universidad del Rosario — School of Sciences and Engineering, Applied Mathematics and Computer Science. Big Data Project, 2026.
