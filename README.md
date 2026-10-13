@@ -134,10 +134,6 @@ spark-submit --master yarn streaming_demo_v2.py --producer-host <EC2-PRIVATE-IP>
 python3 monitor.py
 ```
 
-## Results
-
-> _To be completed with the final metrics once both models have been evaluated: Accuracy/Precision/Recall/F1 (Random Forest), AUC-ROC/binary F1/FPR (KMeans with calibrated threshold), base vs. optimized model comparison, end-to-end throughput and latency of the streaming pipeline, and horizontal scalability comparison (2 to 5 nodes)._
-
 ## References
 
 - Sharafaldin, I., Lashkari, A. H., & Ghorbani, A. A. (2018). *Toward generating a new intrusion detection dataset and intrusion traffic characterization.* ICISSP.
