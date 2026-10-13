@@ -1,0 +1,31 @@
+[
+  {
+    "Classification": "spark-defaults",
+    "Properties": {
+      "spark.executor.cores": "2",
+      "spark.executor.memory": "6g",
+      "spark.executor.memoryOverhead": "1024",
+      "spark.driver.memory": "6g",
+      "spark.driver.cores": "2",
+      "spark.executor.instances": "2",
+      "spark.default.parallelism": "16",
+      "spark.sql.shuffle.partitions": "16",
+      "spark.serializer": "org.apache.spark.serializer.KryoSerializer",
+      "spark.kryoserializer.buffer.max": "256m",
+      "spark.memory.fraction": "0.75",
+      "spark.memory.storageFraction": "0.40",
+      "spark.task.maxFailures": "4",
+      "spark.sql.streaming.metricsEnabled": "true",
+      "spark.hadoop.fs.s3a.fast.upload": "true"
+    }
+  },
+  {
+    "Classification": "spark-env",
+    "Configurations": [
+      {
+        "Classification": "export",
+        "Properties": { "PYSPARK_PYTHON": "/usr/bin/python3" }
+      }
+    ]
+  }
+]
