@@ -142,7 +142,7 @@ python3 monitor.py
 - Armbrust, M. et al. (2018). *Structured streaming: A declarative API for real-time applications in Apache Spark.* ACM SIGMOD.
 
 ## Authors
-- Samuel David Rojas Cárdenas — [samueldavidrojascardenas@gmail.com](mailto:samueldavidrojascardenas@gmail.com)
+- Samuel David Rojas Cárdenas
 - Sergio Andrés Guevara
 
 Universidad del Rosario — School of Sciences and Engineering, Applied Mathematics and Computer Science. Big Data Project, 2026.
