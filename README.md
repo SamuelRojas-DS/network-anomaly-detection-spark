@@ -41,7 +41,7 @@ The comparison prioritizes **distributed system behavior** (training time, horiz
 | Master | m5.xlarge | 4 | 16 GiB | 64 GiB EBS | 1 |
 | Core | m5.xlarge | 4 | 16 GiB | 64 GiB EBS | 2 (min) |
 
-**Key Spark configuration** (derived from m5.xlarge sizing heuristics — full file in [`/config/spark-defaults.conf`](./config/spark-defaults.conf)):
+**Key Spark configuration** (derived from m5.xlarge sizing heuristics; set inline via `SparkSession.builder.config(...)` in each script, and mirrored in `emr-spark-config.json` for cluster provisioning):
 
 ```
 spark.executor.cores            2
@@ -73,59 +73,71 @@ Region: `us-east-1`, co-located with the public CSE-CIC-IDS2018 bucket to avoid 
 ## Repository structure
 
 ```
-├── scripts/
-│   ├── data_management_cic_ids2017.py
-│   ├── data_management_cic_ids2018.py
-│   ├── pipeline_random_forest.py
-│   ├── pipeline_kmeans.py
-│   ├── tcp_sender.py
-│   ├── streaming_demo.py
-│   └── monitor.py
-├── config/
-│   ├── spark-defaults.conf
-│   └── emr-spark-config.json
-├── notebooks/            # Exploración y validación de resultados
-├── results/              # Métricas de evaluación batch y streaming, gráficas de escalabilidad
+├── gestion_datos_1.py              # Fase 1 — ingesta, limpieza y preprocesamiento de CIC-IDS2017
+├── gestion_datos_cic_ids2018.py    # Fase 2 — homologación de CIC-IDS2018 para la demo de streaming
+├── pipeline_random_forest.py       # Fase 1 — entrenamiento, evaluación y optimización de Random Forest
+├── pipeline_kmeans.py              # Fase 1 — entrenamiento, calibración, evaluación y optimización de KMeans
+├── tcp_sender.py                   # Fase 3 — productor TCP (corre en la EC2)
+├── streaming_demo_v2.py            # Fase 3 — consumidor Spark Structured Streaming (corre en el master EMR)
+├── monitor.py                      # Fase 4 — dashboard de métricas en terminal
+├── create_bucket.sh                # Preparación — crea el bucket S3 con toda su estructura
+├── guia_streaming.md               # Guía paso a paso del despliegue completo (3 terminales)
 ├── docs/
-│   └── Proyecto_BD.pdf   # Especificación técnica completa del proyecto
+│   ├── Proyecto_BD.pdf             # Especificación técnica — Fase 1 (problema, objetivos, infraestructura)
+│   └── Proyecto_BD_Fase2.pdf       # Especificación técnica — Fase 2 (infraestructura detallada)
 └── README.md
 ```
 
 ## How to reproduce
 
-**1. Provision the EMR cluster**
+Ver [`guia_streaming.md`](./guia_streaming.md) para la guía completa (Security Groups, los tres terminales de la demo y troubleshooting). Resumen rápido:
+
+**1. Crear el bucket S3 y el clúster EMR**
 ```bash
+bash create_bucket.sh proyecto-anomalias-emr us-east-1
+
 aws emr create-cluster \
-  --name "ProjectAnomalies" \
+  --name "ProyectoAnomalias-BD2026" \
   --release-label emr-7.1.0 \
   --region us-east-1 \
   --applications Name=Spark Name=Hadoop Name=JupyterEnterpriseGateway \
   --instance-groups \
       InstanceGroupType=MASTER,InstanceType=m5.xlarge,InstanceCount=1 \
       InstanceGroupType=CORE,InstanceType=m5.xlarge,InstanceCount=2 \
-  --ec2-attributes KeyName=<EC2_KEY_PAIR>,SubnetId=<SUBNET_ID>,InstanceProfile=EMR_EC2_DefaultRole \
+  --ec2-attributes KeyName=<EC2_KEY_PAIR>,SubnetId=<SUBNET_ID> \
   --service-role EMR_DefaultRole \
-  --log-uri s3://project-anomalies-emr/logs/emr/ \
-  --bootstrap-actions Path=s3://project-anomalies-emr/scripts/bootstrap.sh \
-  --configurations file://config/emr-spark-config.json \
-  --enable-debugging \
-  --auto-terminate
+  --log-uri s3://proyecto-anomalias-emr/logs/emr/ \
+  --configurations file://emr-spark-config.json \
+  --enable-debugging
 ```
 
-**2. Train the models**
+**2. Entrenar los modelos (Fase 1 — en el nodo master)**
 ```bash
-spark-submit scripts/pipeline_random_forest.py
-spark-submit scripts/pipeline_kmeans.py
+spark-submit --master yarn gestion_datos_1.py           # preprocesamiento + preprocesadores compartidos
+spark-submit --master yarn pipeline_random_forest.py    # Random Forest: entrenar + evaluar + optimizar
+spark-submit --master yarn pipeline_kmeans.py            # KMeans: entrenar + calibrar + evaluar + optimizar
 ```
 
-**3. Run the streaming demonstration**
+**3. Homologar el dataset de streaming (Fase 2 — una sola vez)**
 ```bash
-spark-submit scripts/streaming_demo.py
+spark-submit --master yarn gestion_datos_cic_ids2018.py
+```
+
+**4. Ejecutar la demo de streaming (Fase 3 — tres terminales simultáneas)**
+```bash
+# Terminal 1 (EC2 productora)
+python3 tcp_sender.py --rate 500
+
+# Terminal 2 (master EMR)
+spark-submit --master yarn streaming_demo_v2.py --producer-host <EC2-PRIVATE-IP> --producer-port 9999
+
+# Terminal 3 (local o EMR)
+python3 monitor.py
 ```
 
 ## Results
 
-> _Completar con las métricas finales una vez evaluados ambos modelos: Accuracy/Precision/Recall/F1 (Random Forest), separación de scores (KMeans), throughput y latencia end-to-end del pipeline de streaming, y comparación de escalabilidad horizontal (2 a 5 nodos)._
+> _Completar con las métricas finales una vez evaluados ambos modelos: Accuracy/Precision/Recall/F1 (Random Forest), AUC-ROC/F1 binario/FPR (KMeans con umbral calibrado), comparación modelo base vs. optimizado, throughput y latencia end-to-end del pipeline de streaming, y comparación de escalabilidad horizontal (2 a 5 nodos)._
 
 ## References
 
@@ -134,5 +146,8 @@ spark-submit scripts/streaming_demo.py
 - Meng, X. et al. (2016). *MLlib: Machine learning in Apache Spark.* JMLR.
 - Armbrust, M. et al. (2018). *Structured streaming: A declarative API for real-time applications in Apache Spark.* ACM SIGMOD.
 
-## Author
-Samuel David Rojas Cárdenas — [samueldavidrojascardenas@gmail.com](mailto:samueldavidrojascardenas@gmail.com)
+## Authors
+- Samuel David Rojas Cárdenas — [samueldavidrojascardenas@gmail.com](mailto:samueldavidrojascardenas@gmail.com)
+- Sergio Andrés Guevara
+
+Universidad del Rosario — Escuela de Ciencias e Ingeniería, Matemáticas Aplicadas y Ciencias de la Computación. Proyecto de Big Data, 2026.:samueldavidrojascardenas@gmail.com)
